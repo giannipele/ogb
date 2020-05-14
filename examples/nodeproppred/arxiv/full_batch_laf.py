@@ -13,9 +13,10 @@ from ogb.nodeproppred import PygNodePropPredDataset, Evaluator
 from logger import Logger
 from laf import SparseAdjAggregationLayer
 
-class GCNConv(torch.nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(GCNConv, self).__init__()
+
+class GCNLafConv(torch.nn.Module):
+    def __init__(self, in_channels, out_channels, aggregation):
+        super(GCNLafConv, self).__init__()
 
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -23,29 +24,33 @@ class GCNConv(torch.nn.Module):
         self.weight = Parameter(torch.Tensor(in_channels, out_channels))
         self.bias = Parameter(torch.Tensor(out_channels))
 
+        self.aggregator = SparseAdjAggregationLayer(function=aggregation)
         self.reset_parameters()
 
     def reset_parameters(self):
         glorot(self.weight)
         zeros(self.bias)
+        self.aggregator.reset_parameters()
 
     def forward(self, x, adj):
-        return adj @ x @ self.weight
+        transform = F.relu(x @ self.weight)
+        aggr = self.aggregator(transform, adj)
+        return aggr
 
 
 class GCN(torch.nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels, num_layers,
-                 dropout):
+                 dropout, aggregation):
         super(GCN, self).__init__()
 
         self.convs = torch.nn.ModuleList()
-        self.convs.append(GCNConv(in_channels, hidden_channels))
+        self.convs.append(GCNLafConv(in_channels, hidden_channels, aggregation))
         self.bns = torch.nn.ModuleList()
         self.bns.append(torch.nn.BatchNorm1d(hidden_channels))
         for _ in range(num_layers - 2):
-            self.convs.append(GCNConv(hidden_channels, hidden_channels))
+            self.convs.append(GCNLafConv(hidden_channels, hidden_channels, aggregation))
             self.bns.append(torch.nn.BatchNorm1d(hidden_channels))
-        self.convs.append(GCNConv(hidden_channels, out_channels))
+        self.convs.append(GCNLafConv(hidden_channels, out_channels, aggregation))
 
         self.dropout = dropout
 
@@ -64,7 +69,7 @@ class GCN(torch.nn.Module):
 
 
 class SAGELafConv(torch.nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, out_channels, aggregation):
         super(SAGELafConv, self).__init__()
 
         self.in_channels = in_channels
@@ -74,13 +79,14 @@ class SAGELafConv(torch.nn.Module):
         self.root_weight = Parameter(torch.Tensor(in_channels, out_channels))
         self.bias = Parameter(torch.Tensor(out_channels))
 
-        self.aggregator = SparseAdjAggregationLayer()
+        self.aggregator = SparseAdjAggregationLayer(function=aggregation)
         self.reset_parameters()
 
     def reset_parameters(self):
         glorot(self.weight)
         glorot(self.root_weight)
         zeros(self.bias)
+        self.aggregator.reset_parameters()
 
     def forward(self, x, adj):
         aggr = self.aggregator(x, adj)
@@ -92,17 +98,17 @@ class SAGELafConv(torch.nn.Module):
 
 class SAGE(torch.nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels, num_layers,
-                 dropout):
+                 dropout, aggregation):
         super(SAGE, self).__init__()
 
         self.convs = torch.nn.ModuleList()
-        self.convs.append(SAGELafConv(in_channels, hidden_channels))
+        self.convs.append(SAGELafConv(in_channels, hidden_channels, aggregation))
         self.bns = torch.nn.ModuleList()
         self.bns.append(torch.nn.BatchNorm1d(hidden_channels))
         for _ in range(num_layers - 2):
-            self.convs.append(SAGELafConv(hidden_channels, hidden_channels))
+            self.convs.append(SAGELafConv(hidden_channels, hidden_channels, aggregation))
             self.bns.append(torch.nn.BatchNorm1d(hidden_channels))
-        self.convs.append(SAGELafConv(hidden_channels, out_channels))
+        self.convs.append(SAGELafConv(hidden_channels, out_channels, aggregation))
 
         self.dropout = dropout
 
@@ -166,6 +172,7 @@ def main():
     parser.add_argument('--lr', type=float, default=0.01)
     parser.add_argument('--epochs', type=int, default=500)
     parser.add_argument('--runs', type=int, default=10)
+    parser.add_argument('--aggregation', type=str, default='mean')
     args = parser.parse_args()
     print(args)
 
@@ -188,10 +195,10 @@ def main():
 
     if args.use_sage:
         model = SAGE(data.x.size(-1), args.hidden_channels, dataset.num_classes,
-                     args.num_layers, args.dropout).to(device)
+                     args.num_layers, args.dropout, args.aggregation).to(device)
     else:
         model = GCN(data.x.size(-1), args.hidden_channels, dataset.num_classes, args.num_layers,
-                    args.dropout).to(device)
+                    args.dropout, args.aggregation).to(device)
 
         # Pre-compute GCN normalization.
         adj = adj.set_diag()
