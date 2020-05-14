@@ -178,6 +178,7 @@ def main():
     data = dataset[0]
 
     x = data.x.to(device)
+    x = x - torch.min(x)
     y_true = data.y.to(device)
     train_idx = split_idx['train'].to(device)
 
