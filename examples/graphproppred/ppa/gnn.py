@@ -11,7 +11,7 @@ from torch_scatter import scatter_mean
 class GNN(torch.nn.Module):
 
     def __init__(self, num_class, num_layer = 5, emb_dim = 300, 
-                    gnn_type = 'gin', virtual_node = True, residual = False, drop_ratio = 0.5, JK = "last", graph_pooling = "mean"):
+                    gnn_type = 'gin', virtual_node = True, residual = False, drop_ratio = 0.5, JK = "last", graph_pooling = "mean", laf_fun='mean'):
         '''
             num_tasks (int): number of labels to be predicted
             virtual_node (bool): whether to add virtual node or not
@@ -46,9 +46,9 @@ class GNN(torch.nn.Module):
         elif self.graph_pooling == "attention":
             self.pool = GlobalAttention(gate_nn = torch.nn.Sequential(torch.nn.Linear(emb_dim, 2*emb_dim), torch.nn.BatchNorm1d(2*emb_dim), torch.nn.ReLU(), torch.nn.Linear(2*emb_dim, 1)))
         elif self.graph_pooling == "set2set":
-            self.pool = Set2Set(emb_dim, processing_steps = 2)
+            self.pool = Set2Set(emb_dim, processing_steps=2)
         elif self.graph_pooling == "laf":
-            self.pool = ScatterAggregationLayer(function='mean')
+            self.pool = ScatterAggregationLayer(function=laf_fun)
             self.pool.reset_parameters()
         else:
             raise ValueError("Invalid graph pooling type.")

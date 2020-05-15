@@ -73,6 +73,8 @@ def main():
                         help='number of GNN message passing layers (default: 5)')
     parser.add_argument('--pooling', type=str, default='mean',
                         help='Pooling tecnhnique for graph embedding')
+    parser.add_argument('--laffun', type=str, default='mean',
+                        help='Init function if laf pooling is specified')
     parser.add_argument('--emb_dim', type=int, default=300,
                         help='dimensionality of hidden units in GNNs (default: 300)')
     parser.add_argument('--batch_size', type=int, default=32,
@@ -87,6 +89,8 @@ def main():
     parser.add_argument('--filename', type=str, default="",
                         help='filename to output result (default: )')
     args = parser.parse_args()
+
+    print(args)
 
     device = torch.device("cuda:" + str(args.device)) if torch.cuda.is_available() else torch.device("cpu")
 
@@ -104,13 +108,13 @@ def main():
     test_loader = DataLoader(dataset[split_idx["test"]], batch_size=args.batch_size, shuffle=False, num_workers = args.num_workers)
 
     if args.gnn == 'gin':
-        model = GNN(gnn_type = 'gin', num_class = dataset.num_classes, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = False, graph_pooling=args.pooling).to(device)
+        model = GNN(gnn_type = 'gin', num_class = dataset.num_classes, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = False, graph_pooling=args.pooling, laf_fun=args.laffun).to(device)
     elif args.gnn == 'gin-virtual':
-        model = GNN(gnn_type = 'gin', num_class = dataset.num_classes, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = True, graph_pooling=args.pooling).to(device)
+        model = GNN(gnn_type = 'gin', num_class = dataset.num_classes, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = True, graph_pooling=args.pooling, laf_fun=args.laffun).to(device)
     elif args.gnn == 'gcn':
-        model = GNN(gnn_type = 'gcn', num_class = dataset.num_classes, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = False, graph_pooling=args.pooling).to(device)
+        model = GNN(gnn_type = 'gcn', num_class = dataset.num_classes, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = False, graph_pooling=args.pooling, laf_fun=args.laffun).to(device)
     elif args.gnn == 'gcn-virtual':
-        model = GNN(gnn_type = 'gcn', num_class = dataset.num_classes, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = True, graph_pooling=args.pooling).to(device)
+        model = GNN(gnn_type = 'gcn', num_class = dataset.num_classes, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = True, graph_pooling=args.pooling, laf_fun=args.laffun).to(device)
     else:
         raise ValueError('Invalid GNN type')
 
