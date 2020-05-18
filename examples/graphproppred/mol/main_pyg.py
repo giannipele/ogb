@@ -8,6 +8,7 @@ from tqdm import tqdm
 import argparse
 import time
 import numpy as np
+import time
 
 ### importing OGB
 from ogb.graphproppred import PygGraphPropPredDataset, Evaluator
@@ -133,6 +134,7 @@ def main():
     train_curve = []
 
     for epoch in range(1, args.epochs + 1):
+        start = time.time()
         print("=====Epoch {}".format(epoch))
         print('Training...')
         train(model, device, train_loader, optimizer, dataset.task_type)
@@ -147,6 +149,8 @@ def main():
         train_curve.append(train_perf[dataset.eval_metric])
         valid_curve.append(valid_perf[dataset.eval_metric])
         test_curve.append(test_perf[dataset.eval_metric])
+
+        print(time.time() - start)
 
     if 'classification' in dataset.task_type:
         best_val_epoch = np.argmax(np.array(valid_curve))
