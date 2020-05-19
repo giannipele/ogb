@@ -166,7 +166,7 @@ def main():
 
         if 'classification' in dataset.task_type:
             if valid_perf[dataset.eval_metric] >= best_val:
-                best_val = epoch
+                best_val = valid_perf[dataset.eval_metric]
                 if not args.filename== '':
                     torch.save(model.state_dict(), '{}.mdl'.format(args.filename))
         else:
