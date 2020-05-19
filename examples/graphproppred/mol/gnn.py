@@ -11,7 +11,7 @@ from torch_scatter import scatter_mean
 class GNN(torch.nn.Module):
 
     def __init__(self, num_tasks, num_layer = 5, emb_dim = 300, 
-                    gnn_type = 'gin', virtual_node = True, residual = False, drop_ratio = 0.5, JK = "last", graph_pooling = "mean", laf_fun='mean', laf_layers='false'):
+                    gnn_type = 'gin', virtual_node = True, residual = False, drop_ratio = 0.5, JK = "last", graph_pooling = "mean", laf_fun='mean', laf_layers='false', device='cuda'):
         '''
             num_tasks (int): number of labels to be predicted
             virtual_node (bool): whether to add virtual node or not
@@ -31,9 +31,9 @@ class GNN(torch.nn.Module):
 
         ### GNN to generate node embeddings
         if virtual_node:
-            self.gnn_node = GNN_node_Virtualnode(num_layer, emb_dim, JK = JK, drop_ratio = drop_ratio, residual = residual, gnn_type = gnn_type, laf_fun=laf_fun, laf_layers=laf_layers)
+            self.gnn_node = GNN_node_Virtualnode(num_layer, emb_dim, JK = JK, drop_ratio = drop_ratio, residual = residual, gnn_type = gnn_type, laf_fun=laf_fun, laf_layers=laf_layers, device=device)
         else:
-            self.gnn_node = GNN_node(num_layer, emb_dim, JK = JK, drop_ratio = drop_ratio, residual = residual, gnn_type = gnn_type, laf_fun=laf_fun, laf_layers=laf_layers)
+            self.gnn_node = GNN_node(num_layer, emb_dim, JK = JK, drop_ratio = drop_ratio, residual = residual, gnn_type = gnn_type, laf_fun=laf_fun, laf_layers=laf_layers, device=device)
 
 
         ### Pooling function to generate whole-graph embeddings
@@ -48,8 +48,7 @@ class GNN(torch.nn.Module):
         elif self.graph_pooling == "set2set":
             self.pool = Set2Set(emb_dim, processing_steps = 2)
         elif self.graph_pooling == "laf":
-            self.pool = ScatterAggregationLayer(function=laf_fun)
-            self.pool.reset_parameters()
+            self.pool = ScatterAggregationLayer(function=laf_fun, grad=True, device=device)
         else:
             raise ValueError("Invalid graph pooling type.")
 
