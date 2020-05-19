@@ -156,7 +156,7 @@ def main():
         test_perf = eval(model, device, test_loader, evaluator)
 
         print({'Train': train_perf, 'Validation': valid_perf, 'Test': test_perf})
-        print("Time {.4f}s", time.time() - start)
+        print("Time {:.4f}s".format(time.time() - start))
         flog.write("{}\tTime: {}s\n".format({'Train': train_perf, 'Validation': valid_perf, 'Test': test_perf}, time.time() - start))
         flog.flush()
 
