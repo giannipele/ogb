@@ -136,7 +136,7 @@ class GNN_node(torch.nn.Module):
     Output:
         node representations
     """
-    def __init__(self, num_layer, emb_dim, drop_ratio = 0.5, JK = "last", residual = False, gnn_type = 'gin', laf_fun='mean'):
+    def __init__(self, num_layer, emb_dim, drop_ratio = 0.5, JK = "last", residual = False, gnn_type = 'gin', laf_fun='mean', laf_layers='false'):
         '''
             emb_dim (int): node embedding dimensionality
             num_layer (int): number of GNN message passing layers
@@ -159,7 +159,7 @@ class GNN_node(torch.nn.Module):
         self.convs = torch.nn.ModuleList()
         self.batch_norms = torch.nn.ModuleList()
         
-        if laf_fun == 'none':
+        if laf_layers == 'false':
             for layer in range(num_layer):
                 if gnn_type == 'gin':
                     self.convs.append(GINConv(emb_dim))
@@ -170,7 +170,7 @@ class GNN_node(torch.nn.Module):
                 
                 self.batch_norms.append(torch.nn.BatchNorm1d(emb_dim))
 
-        else:
+        elif laf_layers == 'true':
             for layer in range(num_layer):
                 if gnn_type == 'gin':
                     self.convs.append(GINLafConv(emb_dim, aggr=laf_fun))
@@ -220,7 +220,7 @@ class GNN_node_Virtualnode(torch.nn.Module):
     Output:
         node representations
     """
-    def __init__(self, num_layer, emb_dim, drop_ratio = 0.5, JK = "last", residual = False, gnn_type = 'gin', laf_fun='mean'):
+    def __init__(self, num_layer, emb_dim, drop_ratio = 0.5, JK = "last", residual = False, gnn_type = 'gin', laf_fun='mean', laf_layers='false'):
         '''
             emb_dim (int): node embedding dimensionality
         '''
@@ -249,15 +249,26 @@ class GNN_node_Virtualnode(torch.nn.Module):
         ### List of MLPs to transform virtual node at every layer
         self.mlp_virtualnode_list = torch.nn.ModuleList()
 
-        for layer in range(num_layer):
-            if gnn_type == 'gin':
-                self.convs.append(GINLafConv(emb_dim, aggr=laf_fun))
-            elif gnn_type == 'gcn':
-                self.convs.append(GCNLafConv(emb_dim, aggr=laf_fun))
-            else:
-                ValueError('Undefined GNN type called {}'.format(gnn_type))
+        if laf_layers == 'false':
+            for layer in range(num_layer):
+                if gnn_type == 'gin':
+                    self.convs.append(GINConv(emb_dim))
+                elif gnn_type == 'gcn':
+                    self.convs.append(GCNConv(emb_dim))
+                else:
+                    ValueError('Undefined GNN type called {}'.format(gnn_type))
 
-            self.batch_norms.append(torch.nn.BatchNorm1d(emb_dim))
+                self.batch_norms.append(torch.nn.BatchNorm1d(emb_dim))
+        elif laf_layers == 'true':
+            for layer in range(num_layer):
+                if gnn_type == 'gin':
+                    self.convs.append(GINLafConv(emb_dim, aggr=laf_fun))
+                elif gnn_type == 'gcn':
+                    self.convs.append(GCNLafConv(emb_dim, aggr=laf_fun))
+                else:
+                    ValueError('Undefined GNN type called {}'.format(gnn_type))
+
+                self.batch_norms.append(torch.nn.BatchNorm1d(emb_dim))
 
         for layer in range(num_layer - 1):
             self.mlp_virtualnode_list.append(torch.nn.Sequential(torch.nn.Linear(emb_dim, 2*emb_dim), torch.nn.BatchNorm1d(2*emb_dim), torch.nn.ReLU(), \
