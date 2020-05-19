@@ -136,7 +136,7 @@ class GNN_node(torch.nn.Module):
     Output:
         node representations
     """
-    def __init__(self, num_layer, emb_dim, drop_ratio = 0.5, JK = "last", residual = False, gnn_type = 'gin', laf_fun='mean', laf_layers='false'):
+    def __init__(self, num_layer, emb_dim, drop_ratio = 0.5, JK = "last", residual = False, gnn_type = 'gin', laf_fun='mean', laf_layers='false', device=device):
         '''
             emb_dim (int): node embedding dimensionality
             num_layer (int): number of GNN message passing layers
@@ -173,9 +173,9 @@ class GNN_node(torch.nn.Module):
         elif laf_layers == 'true':
             for layer in range(num_layer):
                 if gnn_type == 'gin':
-                    self.convs.append(GINLafConv(emb_dim, aggr=laf_fun))
+                    self.convs.append(GINLafConv(emb_dim, aggr=laf_fun, device=device))
                 elif gnn_type == 'gcn':
-                    self.convs.append(GCNLafConv(emb_dim, aggr=laf_fun))
+                    self.convs.append(GCNLafConv(emb_dim, aggr=laf_fun, device=device))
                 else:
                     ValueError('Undefined GNN type called {}'.format(gnn_type))
                 
@@ -220,7 +220,7 @@ class GNN_node_Virtualnode(torch.nn.Module):
     Output:
         node representations
     """
-    def __init__(self, num_layer, emb_dim, drop_ratio = 0.5, JK = "last", residual = False, gnn_type = 'gin', laf_fun='mean', laf_layers='false'):
+    def __init__(self, num_layer, emb_dim, drop_ratio = 0.5, JK = "last", residual = False, gnn_type = 'gin', laf_fun='mean', laf_layers='false', device=device):
         '''
             emb_dim (int): node embedding dimensionality
         '''
@@ -262,9 +262,9 @@ class GNN_node_Virtualnode(torch.nn.Module):
         elif laf_layers == 'true':
             for layer in range(num_layer):
                 if gnn_type == 'gin':
-                    self.convs.append(GINLafConv(emb_dim, aggr=laf_fun))
+                    self.convs.append(GINLafConv(emb_dim, aggr=laf_fun, device=device))
                 elif gnn_type == 'gcn':
-                    self.convs.append(GCNLafConv(emb_dim, aggr=laf_fun))
+                    self.convs.append(GCNLafConv(emb_dim, aggr=laf_fun, device=device))
                 else:
                     ValueError('Undefined GNN type called {}'.format(gnn_type))
 
