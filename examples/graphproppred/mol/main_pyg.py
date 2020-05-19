@@ -186,6 +186,7 @@ def main():
     print('Finished training!')
     print('Best validation score: {}'.format(valid_curve[best_val_epoch]))
     print('Test score: {}'.format(test_curve[best_val_epoch]))
+    print('Best val:', best_val)
 
     flog.write('Finished training!\n')
     flog.write('Best validation score: {}\n'.format(valid_curve[best_val_epoch]))
