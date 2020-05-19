@@ -135,7 +135,7 @@ def main():
     test_curve = []
     train_curve = []
 
-    if dataset.task_type == 'classification':
+    if 'classification' in dataset.task_type:
         best_val = 0
     else:
         best_val = 1e12
