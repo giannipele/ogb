@@ -119,13 +119,13 @@ def main():
     test_loader = DataLoader(dataset[split_idx["test"]], batch_size=args.batch_size, shuffle=False, num_workers = args.num_workers)
 
     if args.gnn == 'gin':
-        model = GNN(gnn_type = 'gin', num_tasks = dataset.num_tasks, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = False, graph_pooling=args.pooling, laf_fun=args.laf, laf_layers=args.laf_layers).to(device)
+        model = GNN(gnn_type = 'gin', num_tasks = dataset.num_tasks, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = False, graph_pooling=args.pooling, laf_fun=args.laf, laf_layers=args.laf_layers, device=device).to(device)
     elif args.gnn == 'gin-virtual':
-        model = GNN(gnn_type = 'gin', num_tasks = dataset.num_tasks, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = True, graph_pooling=args.pooling, laf_fun=args.laf, laf_layers=args.laf_layers).to(device)
+        model = GNN(gnn_type = 'gin', num_tasks = dataset.num_tasks, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = True, graph_pooling=args.pooling, laf_fun=args.laf, laf_layers=args.laf_layers, device=device).to(device)
     elif args.gnn == 'gcn':
-        model = GNN(gnn_type = 'gcn', num_tasks = dataset.num_tasks, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = False, graph_pooling=args.pooling, laf_fun=args.laf, laf_layers=args.laf_layers).to(device)
+        model = GNN(gnn_type = 'gcn', num_tasks = dataset.num_tasks, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = False, graph_pooling=args.pooling, laf_fun=args.laf, laf_layers=args.laf_layers, device=device).to(device)
     elif args.gnn == 'gcn-virtual':
-        model = GNN(gnn_type = 'gcn', num_tasks = dataset.num_tasks, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = True, graph_pooling=args.pooling, laf_fun=args.laf, laf_layers=args.laf_layers).to(device)
+        model = GNN(gnn_type = 'gcn', num_tasks = dataset.num_tasks, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = True, graph_pooling=args.pooling, laf_fun=args.laf, laf_layers=args.laf_layers, device=device).to(device)
     else:
         raise ValueError('Invalid GNN type')
 
