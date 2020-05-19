@@ -49,7 +49,6 @@ class GNN(torch.nn.Module):
             self.pool = Set2Set(emb_dim, processing_steps = 2)
         elif self.graph_pooling == "laf":
             self.pool = ScatterAggregationLayer(function=laf_fun, grad=True, device=device)
-            self.pool.reset_parameters()
         else:
             raise ValueError("Invalid graph pooling type.")
 
