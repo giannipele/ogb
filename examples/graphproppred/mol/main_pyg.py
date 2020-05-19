@@ -157,7 +157,7 @@ def main():
 
         print({'Train': train_perf, 'Validation': valid_perf, 'Test': test_perf})
         print("Time {.4f}s", time.time() - start)
-        flog.write("{}\t{}\n".format({'Train': train_perf, 'Validation': valid_perf, 'Test': test_perf}, time.time() - start))
+        flog.write("{}\tTime: {}s\n".format({'Train': train_perf, 'Validation': valid_perf, 'Test': test_perf}, time.time() - start))
         flog.flush()
 
         train_curve.append(train_perf[dataset.eval_metric])
