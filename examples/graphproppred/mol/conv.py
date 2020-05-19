@@ -65,7 +65,7 @@ class GCNConv(MessagePassing):
 
 
 class GINLafConv(MessagePassing):
-    def __init__(self, emb_dim, aggr):
+    def __init__(self, emb_dim, aggr, device='cuda'):
         '''
             emb_dim (int): node embedding dimensionality
         '''
@@ -77,7 +77,7 @@ class GINLafConv(MessagePassing):
         self.eps = torch.nn.Parameter(torch.Tensor([0]))
 
         self.bond_encoder = BondEncoder(emb_dim=emb_dim)
-        self.aggregator = ScatterAggregationLayer(grad=True, function=aggr)
+        self.aggregator = ScatterAggregationLayer(grad=True, function=aggr, device=device)
 
     def forward(self, x, edge_index, edge_attr):
         edge_embedding = self.bond_encoder(edge_attr)
@@ -97,13 +97,13 @@ class GINLafConv(MessagePassing):
 
 
 class GCNLafConv(MessagePassing):
-    def __init__(self, emb_dim, aggr='mean'):
+    def __init__(self, emb_dim, aggr='mean', device='cuda'):
         super(GCNLafConv, self).__init__()
 
         self.linear = torch.nn.Linear(emb_dim, emb_dim)
         self.root_emb = torch.nn.Embedding(1, emb_dim)
         self.bond_encoder = BondEncoder(emb_dim = emb_dim)
-        self.aggregator = ScatterAggregationLayer(grad=True, function=aggr)
+        self.aggregator = ScatterAggregationLayer(grad=True, function=aggr, device=device)
 
     def forward(self, x, edge_index, edge_attr):
         x = self.linear(x)
@@ -136,7 +136,7 @@ class GNN_node(torch.nn.Module):
     Output:
         node representations
     """
-    def __init__(self, num_layer, emb_dim, drop_ratio = 0.5, JK = "last", residual = False, gnn_type = 'gin', laf_fun='mean', laf_layers='false', device=device):
+    def __init__(self, num_layer, emb_dim, drop_ratio = 0.5, JK = "last", residual = False, gnn_type = 'gin', laf_fun='mean', laf_layers='false', device='cuda'):
         '''
             emb_dim (int): node embedding dimensionality
             num_layer (int): number of GNN message passing layers
