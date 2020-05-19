@@ -92,9 +92,12 @@ def main():
                         help='full feature or simple feature')
     parser.add_argument('--filename', type=str, default="",
                         help='filename to output result (default: )')
+    parser.add_argument('--seed', type=int, default=92,
+                        help='torch seed')
     args = parser.parse_args()
 
     print(args)
+    torch.manual_seed(args.seed)
 
     device = torch.device("cuda:" + str(args.device)) if torch.cuda.is_available() else torch.device("cpu")
 
