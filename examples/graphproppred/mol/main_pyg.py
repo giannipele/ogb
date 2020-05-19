@@ -135,9 +135,18 @@ def main():
     test_curve = []
     train_curve = []
 
+    if dataset.task_type == 'classification':
+        best_val = 0
+    else:
+        best_val = 1e12
+
+    flog = open(args.filename+".log", 'w')
+    flog.write("{}\n".format(args))
     for epoch in range(1, args.epochs + 1):
         start = time.time()
         print("=====Epoch {}".format(epoch))
+        flog.write("=====Epoch {}\n".format(epoch))
+
         print('Training...')
         train(model, device, train_loader, optimizer, dataset.task_type)
 
@@ -147,12 +156,25 @@ def main():
         test_perf = eval(model, device, test_loader, evaluator)
 
         print({'Train': train_perf, 'Validation': valid_perf, 'Test': test_perf})
+        print("Time {.4f}s", time.time() - start)
+        flog.write("{}\t{}\n".format({'Train': train_perf, 'Validation': valid_perf, 'Test': test_perf}, time.time() - start))
+        flog.flush()
 
         train_curve.append(train_perf[dataset.eval_metric])
         valid_curve.append(valid_perf[dataset.eval_metric])
         test_curve.append(test_perf[dataset.eval_metric])
 
-        print(time.time() - start)
+        if 'classification' in dataset.task_type:
+            if valid_perf[dataset.eval_metric] >= best_val:
+                best_val = epoch
+                if not args.filename== '':
+                    torch.save(model.state_dict(), '{}.mdl'.format(args.filename))
+        else:
+            if valid_perf[dataset.eval_metric] <= best_val:
+                best_val = epoch
+                if not args.filename== '':
+                    torch.save(model.state_dict(), '{}.mdl'.format(args.filename))
+
 
     if 'classification' in dataset.task_type:
         best_val_epoch = np.argmax(np.array(valid_curve))
@@ -165,8 +187,13 @@ def main():
     print('Best validation score: {}'.format(valid_curve[best_val_epoch]))
     print('Test score: {}'.format(test_curve[best_val_epoch]))
 
+    flog.write('Finished training!\n')
+    flog.write('Best validation score: {}\n'.format(valid_curve[best_val_epoch]))
+    flog.write('Test score: {}\n'.format(test_curve[best_val_epoch]))
+    flog.flush()
+
     if not args.filename == '':
-        torch.save({'Val': valid_curve[best_val_epoch], 'Test': test_curve[best_val_epoch], 'Train': train_curve[best_val_epoch], 'BestTrain': best_train}, args.filename)
+        torch.save({'Val': valid_curve[best_val_epoch], 'Test': test_curve[best_val_epoch], 'Train': train_curve[best_val_epoch], 'BestTrain': best_train}, args.filename+".res")
 
 
 if __name__ == "__main__":
