@@ -158,16 +158,28 @@ class GNN_node(torch.nn.Module):
         ###List of GNNs
         self.convs = torch.nn.ModuleList()
         self.batch_norms = torch.nn.ModuleList()
-
-        for layer in range(num_layer):
-            if gnn_type == 'gin':
-                self.convs.append(GINLafConv(emb_dim, aggr=laf_fun))
-            elif gnn_type == 'gcn':
-                self.convs.append(GCNLafConv(emb_dim, aggr=laf_fun))
-            else:
-                ValueError('Undefined GNN type called {}'.format(gnn_type))
+        
+        if laf_fun == 'none':
+            for layer in range(num_layer):
+                if gnn_type == 'gin':
+                    self.convs.append(GINConv(emb_dim))
+                elif gnn_type == 'gcn':
+                    self.convs.append(GCNConv(emb_dim))
+                else:
+                    ValueError('Undefined GNN type called {}'.format(gnn_type))
                 
-            self.batch_norms.append(torch.nn.BatchNorm1d(emb_dim))
+                self.batch_norms.append(torch.nn.BatchNorm1d(emb_dim))
+
+        else:
+            for layer in range(num_layer):
+                if gnn_type == 'gin':
+                    self.convs.append(GINLafConv(emb_dim, aggr=laf_fun))
+                elif gnn_type == 'gcn':
+                    self.convs.append(GCNLafConv(emb_dim, aggr=laf_fun))
+                else:
+                    ValueError('Undefined GNN type called {}'.format(gnn_type))
+                
+                self.batch_norms.append(torch.nn.BatchNorm1d(emb_dim))
 
     def forward(self, batched_data):
         x, edge_index, edge_attr, batch = batched_data.x, batched_data.edge_index, batched_data.edge_attr, batched_data.batch
