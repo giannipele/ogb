@@ -220,7 +220,7 @@ class GNN_node_Virtualnode(torch.nn.Module):
     Output:
         node representations
     """
-    def __init__(self, num_layer, emb_dim, drop_ratio = 0.5, JK = "last", residual = False, gnn_type = 'gin', laf_fun='mean', laf_layers='false', device=device):
+    def __init__(self, num_layer, emb_dim, drop_ratio = 0.5, JK = "last", residual = False, gnn_type = 'gin', laf_fun='mean', laf_layers='false', device='cuda'):
         '''
             emb_dim (int): node embedding dimensionality
         '''
