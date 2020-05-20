@@ -73,8 +73,10 @@ def main():
                         help='number of GNN message passing layers (default: 5)')
     parser.add_argument('--pooling', type=str, default='mean',
                         help='Pooling tecnhnique for graph embedding')
-    parser.add_argument('--laffun', type=str, default='mean',
+    parser.add_argument('--laf', type=str, default='mean',
                         help='Init function if laf pooling is specified')
+    parser.add_argument('--laf_layers', type=str, default='false',
+                        help='If set to true, internal layers will be initialized with laf function')
     parser.add_argument('--emb_dim', type=int, default=300,
                         help='dimensionality of hidden units in GNNs (default: 300)')
     parser.add_argument('--batch_size', type=int, default=32,
@@ -85,9 +87,10 @@ def main():
                         help='number of workers (default: 0)')
     parser.add_argument('--dataset', type=str, default="ogbg-ppa",
                         help='dataset name (default: ogbg-ppa)')
-
     parser.add_argument('--filename', type=str, default="",
                         help='filename to output result (default: )')
+    parser.add_argument('--seed', type=int, default=92,
+                        help='torch seed')
     args = parser.parse_args()
 
     print(args)
@@ -108,13 +111,13 @@ def main():
     test_loader = DataLoader(dataset[split_idx["test"]], batch_size=args.batch_size, shuffle=False, num_workers = args.num_workers)
 
     if args.gnn == 'gin':
-        model = GNN(gnn_type = 'gin', num_class = dataset.num_classes, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = False, graph_pooling=args.pooling, laf_fun=args.laffun).to(device)
+        model = GNN(gnn_type = 'gin', num_tasks = dataset.num_tasks, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = False, graph_pooling=args.pooling, laf_fun=args.laf,  device=device).to(device)
     elif args.gnn == 'gin-virtual':
-        model = GNN(gnn_type = 'gin', num_class = dataset.num_classes, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = True, graph_pooling=args.pooling, laf_fun=args.laffun).to(device)
+        model = GNN(gnn_type = 'gin', num_tasks = dataset.num_tasks, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = True, graph_pooling=args.pooling, laf_fun=args.laf, device=device).to(device)
     elif args.gnn == 'gcn':
-        model = GNN(gnn_type = 'gcn', num_class = dataset.num_classes, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = False, graph_pooling=args.pooling, laf_fun=args.laffun).to(device)
+        model = GNN(gnn_type = 'gcn', num_tasks = dataset.num_tasks, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = False, graph_pooling=args.pooling, laf_fun=args.laf,  device=device).to(device)
     elif args.gnn == 'gcn-virtual':
-        model = GNN(gnn_type = 'gcn', num_class = dataset.num_classes, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = True, graph_pooling=args.pooling, laf_fun=args.laffun).to(device)
+        model = GNN(gnn_type = 'gcn', num_tasks = dataset.num_tasks, emb_dim = args.emb_dim, drop_ratio = args.drop_ratio, virtual_node = True, graph_pooling=args.pooling, laf_fun=args.laf, device=device).to(device)
     else:
         raise ValueError('Invalid GNN type')
 
@@ -124,8 +127,14 @@ def main():
     test_curve = []
     train_curve = []
 
+    best_val = 0
+
+    flog = open(args.filename+".log", 'w')
+    flog.write("{}\n".format(args))
     for epoch in range(1, args.epochs + 1):
+        start = time.time()
         print("=====Epoch {}".format(epoch))
+        flog.write("=====Epoch {}\n".format(epoch))
         print('Training...')
         train(model, device, train_loader, optimizer)
 
@@ -135,10 +144,18 @@ def main():
         test_perf = eval(model, device, test_loader, evaluator)
 
         print({'Train': train_perf, 'Validation': valid_perf, 'Test': test_perf})
+        print("Time {:.4f}s".format(time.time() - start))
+        flog.write("{}\tTime: {}s\n".format({'Train': train_perf, 'Validation': valid_perf, 'Test': test_perf}, time.time() - start))
+        flog.flush()
 
         train_curve.append(train_perf['acc'])
         valid_curve.append(valid_perf['acc'])
         test_curve.append(test_perf['acc'])
+
+        if valid_perf[dataset.eval_metric] >= best_val:
+            best_val = valid_perf[dataset.eval_metric]
+            if not args.filename == '':
+                torch.save(model.state_dict(), '{}.mdl'.format(args.filename))
 
     best_val_epoch = np.argmax(np.array(valid_curve))
     best_train = max(train_curve)
@@ -147,8 +164,13 @@ def main():
     print('Best validation score: {}'.format(valid_curve[best_val_epoch]))
     print('Test score: {}'.format(test_curve[best_val_epoch]))
 
+    flog.write('Finished training!\n')
+    flog.write('Best validation score: {}\n'.format(valid_curve[best_val_epoch]))
+    flog.write('Test score: {}\n'.format(test_curve[best_val_epoch]))
+    flog.flush()
+
     if not args.filename == '':
-        torch.save({'Val': valid_curve[best_val_epoch], 'Test': test_curve[best_val_epoch], 'Train': train_curve[best_val_epoch], 'BestTrain': best_train}, args.filename)
+        torch.save({'Val': valid_curve[best_val_epoch], 'Test': test_curve[best_val_epoch], 'Train': train_curve[best_val_epoch], 'BestTrain': best_train}, args.filename+".res")
 
 
 if __name__ == "__main__":
