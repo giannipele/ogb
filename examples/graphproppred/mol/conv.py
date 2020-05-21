@@ -249,6 +249,8 @@ class GNN_node_Virtualnode(torch.nn.Module):
         ### List of MLPs to transform virtual node at every layer
         self.mlp_virtualnode_list = torch.nn.ModuleList()
 
+        self.lafs = torch.nn.ModuleList()
+
         if laf_layers == 'false':
             for layer in range(num_layer):
                 if gnn_type == 'gin':
@@ -273,6 +275,7 @@ class GNN_node_Virtualnode(torch.nn.Module):
         for layer in range(num_layer - 1):
             self.mlp_virtualnode_list.append(torch.nn.Sequential(torch.nn.Linear(emb_dim, 2*emb_dim), torch.nn.BatchNorm1d(2*emb_dim), torch.nn.ReLU(), \
                                                     torch.nn.Linear(2*emb_dim, emb_dim), torch.nn.BatchNorm1d(emb_dim), torch.nn.ReLU()))
+            self.lafs.append(ScatterAggregationLayer(grad=True, function=laf_fun, device=device))
 
 
     def forward(self, batched_data):
@@ -282,7 +285,7 @@ class GNN_node_Virtualnode(torch.nn.Module):
         ### virtual node embeddings for graphs
         virtualnode_embedding = self.virtualnode_embedding(torch.zeros(batch[-1].item() + 1).to(edge_index.dtype).to(edge_index.device))
 
-        h_list = [self.atom_encoder(x)]
+        h_list = [F.relu(self.atom_encoder(x))]
         for layer in range(self.num_layer):
             ### add message from virtual nodes to graph nodes
             h_list[layer] = h_list[layer] + virtualnode_embedding[batch]
@@ -291,11 +294,11 @@ class GNN_node_Virtualnode(torch.nn.Module):
             h = self.convs[layer](h_list[layer], edge_index, edge_attr)
 
             h = self.batch_norms[layer](h)
-            if layer == self.num_layer - 1:
-                #remove relu for the last layer
-                h = F.dropout(h, self.drop_ratio, training = self.training)
-            else:
-                h = F.dropout(F.relu(h), self.drop_ratio, training = self.training)
+            #if layer == self.num_layer - 1:
+            #    #remove relu for the last layer
+            #    h = F.dropout(h, self.drop_ratio, training = self.training)
+            #else:
+            h = F.dropout(F.relu(h), self.drop_ratio, training = self.training)
 
             if self.residual:
                 h = h + h_list[layer]
@@ -305,7 +308,8 @@ class GNN_node_Virtualnode(torch.nn.Module):
             ### update the virtual nodes
             if layer < self.num_layer - 1:
                 ### add message from graph nodes to virtual nodes
-                virtualnode_embedding_temp = global_add_pool(h_list[layer], batch) + virtualnode_embedding
+                #virtualnode_embedding_temp = global_add_pool(h_list[layer], batch) + virtualnode_embedding
+                virtualnode_embedding_temp = self.lafs[layer](h_list[layer], batch) + virtualnode_embedding
                 ### transform virtual nodes using MLP
 
                 if self.residual:
