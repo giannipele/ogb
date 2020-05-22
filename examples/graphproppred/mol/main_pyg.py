@@ -140,23 +140,23 @@ def main():
     if args.gnn == 'gin':
         model = GNN(gnn_type='gin', num_tasks=dataset.num_tasks, emb_dim=args.emb_dim, drop_ratio=args.drop_ratio,
                     virtual_node=False, graph_pooling=args.pooling, laf_fun=args.laf, laf_layers=args.laf_layers,
-                    device=device).to(device)
+                    device=device, lafgrad=False).to(device)
     elif args.gnn == 'gin-virtual':
         model = GNN(gnn_type='gin', num_tasks=dataset.num_tasks, emb_dim=args.emb_dim, drop_ratio=args.drop_ratio,
                     virtual_node=True, graph_pooling=args.pooling, laf_fun=args.laf, laf_layers=args.laf_layers,
-                    device=device).to(device)
+                    device=device, lafgrad=False).to(device)
     elif args.gnn == 'gcn':
         model = GNN(gnn_type='gcn', num_tasks=dataset.num_tasks, emb_dim=args.emb_dim, drop_ratio=args.drop_ratio,
                     virtual_node=False, graph_pooling=args.pooling, laf_fun=args.laf, laf_layers=args.laf_layers,
-                    device=device).to(device)
+                    device=device, lafgrad=False).to(device)
     elif args.gnn == 'gcn-virtual':
         model = GNN(gnn_type='gcn', num_tasks=dataset.num_tasks, emb_dim=args.emb_dim, drop_ratio=args.drop_ratio,
                     virtual_node=True, graph_pooling=args.pooling, laf_fun=args.laf, laf_layers=args.laf_layers,
-                    device=device).to(device)
+                    device=device, lafgrad=False).to(device)
     elif args.gnn == 'gat':
         model = GNN(gnn_type='gat', num_tasks=dataset.num_tasks, emb_dim=args.emb_dim, drop_ratio=args.drop_ratio,
                     virtual_node=False, graph_pooling=args.pooling, laf_fun=args.laf, laf_layers=args.laf_layers,
-                    device=device).to(device)
+                    device=device, lafgrad=False).to(device)
     else:
         raise ValueError('Invalid GNN type')
 
@@ -239,6 +239,8 @@ def main():
         torch.save({'Val': valid_curve[best_val_epoch], 'Test': test_curve[best_val_epoch],
                     'Train': train_curve[best_val_epoch], 'BestTrain': best_train}, args.filename + "_fixed_training.res")
 
+
+    flog.write("===================LAF TRAINING=================\n")
     valid_curve = []
     test_curve = []
     train_curve = []
@@ -247,8 +249,7 @@ def main():
         best_val = 0
     else:
         best_val = 1e12
-
-    flog.write("===================LAF TRAINING=================\n")
+    model.pool.grad=True
     for epoch in range(1, args.epochs + 1):
         start = time.time()
         print("=====Epoch {}".format(epoch))
