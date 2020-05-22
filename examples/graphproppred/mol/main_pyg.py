@@ -199,24 +199,25 @@ def main():
         print("Time {:.4f}s".format(time.time() - start))
         print("{}\n".format(torch.norm(model.pool.weights)))
         flog.write("{}\n".format({'Train': train_perf, 'Validation': valid_perf, 'Test': test_perf}))
-        flog.write("{}\n".format(time.time()-start))
-        flog.write("{}\n".format(torch.norm(model.pool.weights)))
+        flog.write("Time: {}\n".format(time.time()-start))
+        flog.write("Laf weights norm: {}\n".format(torch.norm(model.pool.weights, dim=0)))
         flog.flush()
 
         train_curve.append(train_perf[dataset.eval_metric])
         valid_curve.append(valid_perf[dataset.eval_metric])
         test_curve.append(test_perf[dataset.eval_metric])
+        print("WEIGHTS:", model.pool.weights)
 
         if 'classification' in dataset.task_type:
             if valid_perf[dataset.eval_metric] >= best_val:
                 best_val = valid_perf[dataset.eval_metric]
                 if not args.filename == '':
-                    torch.save(model.state_dict(), '{}.mdl'.format(args.filename))
+                    torch.save(model.state_dict(), '{}_fixed_training.mdl'.format(args.filename))
         else:
             if valid_perf[dataset.eval_metric] <= best_val:
                 best_val = epoch
                 if not args.filename == '':
-                    torch.save(model.state_dict(), '{}.mdl'.format(args.filename))
+                    torch.save(model.state_dict(), '{}_fixed_training.mdl'.format(args.filename))
 
     if 'classification' in dataset.task_type:
         best_val_epoch = np.argmax(np.array(valid_curve))
@@ -247,6 +248,7 @@ def main():
     else:
         best_val = 1e12
 
+    flog.write("===================LAF TRAINING=================\n")
     for epoch in range(1, args.epochs + 1):
         start = time.time()
         print("=====Epoch {}".format(epoch))
@@ -264,24 +266,25 @@ def main():
         print("Time {:.4f}s".format(time.time() - start))
         print("{}\n".format(torch.norm(model.pool.weights)))
         flog.write("{}\n".format({'Train': train_perf, 'Validation': valid_perf, 'Test': test_perf}))
-        flog.write("{}\n".format(time.time()-start))
-        flog.write("{}\n".format(torch.norm(model.pool.weights)))
+        flog.write("Time: {}\n".format(time.time()-start))
+        flog.write("Laf weights norm: {}\n".format(torch.norm(model.pool.weights, dim=0)))
         flog.flush()
 
         train_curve.append(train_perf[dataset.eval_metric])
         valid_curve.append(valid_perf[dataset.eval_metric])
         test_curve.append(test_perf[dataset.eval_metric])
+        print("WEIGHTS:", model.pool.weights)
 
         if 'classification' in dataset.task_type:
             if valid_perf[dataset.eval_metric] >= best_val:
                 best_val = valid_perf[dataset.eval_metric]
                 if not args.filename == '':
-                    torch.save(model.state_dict(), '{}.mdl'.format(args.filename))
+                    torch.save(model.state_dict(), '{}_laf_training.mdl'.format(args.filename))
         else:
             if valid_perf[dataset.eval_metric] <= best_val:
                 best_val = epoch
                 if not args.filename == '':
-                    torch.save(model.state_dict(), '{}.mdl'.format(args.filename))
+                    torch.save(model.state_dict(), '{}_laf_training.mdl'.format(args.filename))
 
     if 'classification' in dataset.task_type:
         best_val_epoch = np.argmax(np.array(valid_curve))
