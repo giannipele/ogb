@@ -9,6 +9,7 @@ import argparse
 import time
 import numpy as np
 import time
+from torch.nn import Parameter
 
 ### importing OGB
 from ogb.graphproppred import PygGraphPropPredDataset, Evaluator
@@ -140,27 +141,36 @@ def main():
     if args.gnn == 'gin':
         model = GNN(gnn_type='gin', num_tasks=dataset.num_tasks, emb_dim=args.emb_dim, drop_ratio=args.drop_ratio,
                     virtual_node=False, graph_pooling=args.pooling, laf_fun=args.laf, laf_layers=args.laf_layers,
-                    device=device).to(device)
+                    device=device, lafgrad=True).to(device)
     elif args.gnn == 'gin-virtual':
         model = GNN(gnn_type='gin', num_tasks=dataset.num_tasks, emb_dim=args.emb_dim, drop_ratio=args.drop_ratio,
                     virtual_node=True, graph_pooling=args.pooling, laf_fun=args.laf, laf_layers=args.laf_layers,
-                    device=device).to(device)
+                    device=device, lafgrad=True).to(device)
     elif args.gnn == 'gcn':
         model = GNN(gnn_type='gcn', num_tasks=dataset.num_tasks, emb_dim=args.emb_dim, drop_ratio=args.drop_ratio,
                     virtual_node=False, graph_pooling=args.pooling, laf_fun=args.laf, laf_layers=args.laf_layers,
-                    device=device).to(device)
+                    device=device, lafgrad=True).to(device)
     elif args.gnn == 'gcn-virtual':
         model = GNN(gnn_type='gcn', num_tasks=dataset.num_tasks, emb_dim=args.emb_dim, drop_ratio=args.drop_ratio,
                     virtual_node=True, graph_pooling=args.pooling, laf_fun=args.laf, laf_layers=args.laf_layers,
-                    device=device).to(device)
+                    device=device, lafgrad=True).to(device)
     elif args.gnn == 'gat':
         model = GNN(gnn_type='gat', num_tasks=dataset.num_tasks, emb_dim=args.emb_dim, drop_ratio=args.drop_ratio,
                     virtual_node=False, graph_pooling=args.pooling, laf_fun=args.laf, laf_layers=args.laf_layers,
-                    device=device).to(device)
+                    device=device, lafgrad=True).to(device)
     else:
         raise ValueError('Invalid GNN type')
 
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    model_params = []
+    laf_params = []
+    for n, p in model.named_parameters():
+        if n != 'pool.weights':
+            model_params.append(p)
+        else:
+            laf_params.append(p)
+
+    optimizer = optim.Adam(model_params, lr=0.001)
+    lafoptimizer = optim.Adam(laf_params, lr=0.001)
 
     valid_curve = []
     test_curve = []
@@ -188,24 +198,27 @@ def main():
 
         print({'Train': train_perf, 'Validation': valid_perf, 'Test': test_perf})
         print("Time {:.4f}s".format(time.time() - start))
-        flog.write("{}\tTime: {}s\n".format({'Train': train_perf, 'Validation': valid_perf, 'Test': test_perf},
-                                            time.time() - start))
+        print("{}\n".format(torch.norm(model.pool.weights)))
+        flog.write("{}\n".format({'Train': train_perf, 'Validation': valid_perf, 'Test': test_perf}))
+        flog.write("Time: {}\n".format(time.time()-start))
+        flog.write("Laf weights norm: {}\n".format(torch.norm(model.pool.weights, dim=0)))
         flog.flush()
 
         train_curve.append(train_perf[dataset.eval_metric])
         valid_curve.append(valid_perf[dataset.eval_metric])
         test_curve.append(test_perf[dataset.eval_metric])
+        print("WEIGHTS:", model.pool.weights)
 
         if 'classification' in dataset.task_type:
             if valid_perf[dataset.eval_metric] >= best_val:
                 best_val = valid_perf[dataset.eval_metric]
                 if not args.filename == '':
-                    torch.save(model.state_dict(), '{}.mdl'.format(args.filename))
+                    torch.save(model.state_dict(), '{}_fixed_training.mdl'.format(args.filename))
         else:
             if valid_perf[dataset.eval_metric] <= best_val:
                 best_val = epoch
                 if not args.filename == '':
-                    torch.save(model.state_dict(), '{}.mdl'.format(args.filename))
+                    torch.save(model.state_dict(), '{}_fixed_training.mdl'.format(args.filename))
 
     if 'classification' in dataset.task_type:
         best_val_epoch = np.argmax(np.array(valid_curve))
@@ -225,8 +238,75 @@ def main():
 
     if not args.filename == '':
         torch.save({'Val': valid_curve[best_val_epoch], 'Test': test_curve[best_val_epoch],
-                    'Train': train_curve[best_val_epoch], 'BestTrain': best_train}, args.filename + ".res")
+                    'Train': train_curve[best_val_epoch], 'BestTrain': best_train}, args.filename + "_fixed_training.res")
 
+
+    flog.write("===================LAF TRAINING=================\n")
+    valid_curve = []
+    test_curve = []
+    train_curve = []
+
+    if 'classification' in dataset.task_type:
+        best_val = 0
+    else:
+        best_val = 1e12
+    for epoch in range(1, args.epochs + 1):
+        start = time.time()
+        print("=====Epoch {}".format(epoch))
+        flog.write("=====Epoch {}\n".format(epoch))
+
+        print('Training...')
+        train_perf = train(model, device, train_loader, lafoptimizer, dataset.task_type, evaluator)
+
+        print('Evaluating...')
+        # train_perf = eval(model, device, train_loader, evaluator)
+        valid_perf = eval(model, device, valid_loader, evaluator)
+        test_perf = eval(model, device, test_loader, evaluator)
+
+        print({'Train': train_perf, 'Validation': valid_perf, 'Test': test_perf})
+        print("Time {:.4f}s".format(time.time() - start))
+        print("{}\n".format(torch.norm(model.pool.weights)))
+        flog.write("{}\n".format({'Train': train_perf, 'Validation': valid_perf, 'Test': test_perf}))
+        flog.write("Time: {}\n".format(time.time()-start))
+        flog.write("Laf weights norm: {}\n".format(torch.norm(model.pool.weights, dim=0)))
+        flog.flush()
+
+        train_curve.append(train_perf[dataset.eval_metric])
+        valid_curve.append(valid_perf[dataset.eval_metric])
+        test_curve.append(test_perf[dataset.eval_metric])
+        print("WEIGHTS:", model.pool.weights)
+
+        if 'classification' in dataset.task_type:
+            if valid_perf[dataset.eval_metric] >= best_val:
+                best_val = valid_perf[dataset.eval_metric]
+                if not args.filename == '':
+                    torch.save(model.state_dict(), '{}_laf_training.mdl'.format(args.filename))
+        else:
+            if valid_perf[dataset.eval_metric] <= best_val:
+                best_val = epoch
+                if not args.filename == '':
+                    torch.save(model.state_dict(), '{}_laf_training.mdl'.format(args.filename))
+
+    if 'classification' in dataset.task_type:
+        best_val_epoch = np.argmax(np.array(valid_curve))
+        best_train = max(train_curve)
+    else:
+        best_val_epoch = np.argmin(np.array(valid_curve))
+        best_train = min(train_curve)
+
+    print('Finished training!')
+    print('Best validation score: {}'.format(valid_curve[best_val_epoch]))
+    print('Test score: {}'.format(test_curve[best_val_epoch]))
+
+    flog.write('Finished training!\n')
+    flog.write('Best validation score: {}\n'.format(valid_curve[best_val_epoch]))
+    flog.write('Test score: {}\n'.format(test_curve[best_val_epoch]))
+    flog.flush()
+
+    if not args.filename == '':
+        torch.save({'Val': valid_curve[best_val_epoch], 'Test': test_curve[best_val_epoch],
+                    'Train': train_curve[best_val_epoch], 'BestTrain': best_train}, args.filename + "_laf_training.res")
+    flog.close()
 
 if __name__ == "__main__":
     main()

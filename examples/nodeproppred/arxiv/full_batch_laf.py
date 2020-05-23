@@ -89,6 +89,7 @@ class SAGELafConv(torch.nn.Module):
         self.aggregator.reset_parameters()
 
     def forward(self, x, adj):
+        x = F.relu(x)
         aggr = self.aggregator(x, adj)
         out = aggr @ self.weight
         #out = adj.matmul(x, reduce="mean") @ self.weight
@@ -117,6 +118,7 @@ class SAGE(torch.nn.Module):
             conv.reset_parameters()
 
     def forward(self, x, adj):
+        x = F.relu(x)
         for i, conv in enumerate(self.convs[:-1]):
             x = conv(x, adj)
             x = self.bns[i](x)
@@ -171,7 +173,7 @@ def main():
     parser.add_argument('--dropout', type=float, default=0.5)
     parser.add_argument('--lr', type=float, default=0.01)
     parser.add_argument('--epochs', type=int, default=500)
-    parser.add_argument('--runs', type=int, default=10)
+    parser.add_argument('--runs', type=int, default=3)
     parser.add_argument('--aggregation', type=str, default='mean')
     args = parser.parse_args()
     print(args)
@@ -185,7 +187,7 @@ def main():
     data = dataset[0]
 
     x = data.x.to(device)
-    x = x - torch.min(x)
+    #x = x - torch.min(x)
     y_true = data.y.to(device)
     train_idx = split_idx['train'].to(device)
 

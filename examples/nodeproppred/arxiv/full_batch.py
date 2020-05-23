@@ -30,7 +30,9 @@ class GCNConv(torch.nn.Module):
         zeros(self.bias)
 
     def forward(self, x, adj):
-        return adj @ x @ self.weight
+        tmp = F.relu(x @ self.weight)
+        return adj @ tmp
+        #return adj @ x @ self.weight
 
 
 class GCN(torch.nn.Module):
@@ -82,6 +84,7 @@ class SAGEConv(torch.nn.Module):
         zeros(self.bias)
 
     def forward(self, x, adj):
+        x = F.relu(x)
         out = adj.matmul(x, reduce="mean") @ self.weight
         out = out + x @ self.root_weight + self.bias
         return out
@@ -161,8 +164,8 @@ def main():
     parser.add_argument('--hidden_channels', type=int, default=256)
     parser.add_argument('--dropout', type=float, default=0.5)
     parser.add_argument('--lr', type=float, default=0.01)
-    parser.add_argument('--epochs', type=int, default=500)
-    parser.add_argument('--runs', type=int, default=10)
+    parser.add_argument('--epochs', type=int, default=300)
+    parser.add_argument('--runs', type=int, default=5)
     args = parser.parse_args()
     print(args)
 
