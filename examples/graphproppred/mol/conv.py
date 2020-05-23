@@ -164,7 +164,7 @@ class GATConv(MessagePassing):
         glorot(self.att)
         zeros(self.bias)
 
-    def forward(self, x, edge_index, edge_attribute=None, size=None):
+    def forward(self, x, edge_index, edge_attribute=None ):
         """"""
         if size is None and torch.is_tensor(x):
             edge_index, _ = remove_self_loops(edge_index)
@@ -271,7 +271,7 @@ class GNN_node(torch.nn.Module):
         h_list = [self.atom_encoder(x)]
         for layer in range(self.num_layer):
 
-            h = self.convs[layer](h_list[layer], edge_index, edge_attr, size=None)
+            h = self.convs[layer](h_list[layer], edge_index, edge_attr)
             h = self.batch_norms[layer](h)
 
             #if layer == self.num_layer - 1:
