@@ -3,7 +3,7 @@ from torch_geometric.nn import MessagePassing
 from torch_geometric.nn import global_add_pool, global_mean_pool, global_max_pool, GlobalAttention, Set2Set
 import torch.nn.functional as F
 from torch_geometric.nn.inits import uniform
-from laf import ScatterAggregationLayer
+from laf import ScatterAggregationLayer, ExponentialLAF
 from conv import GNN_node, GNN_node_Virtualnode
 
 from torch_scatter import scatter_mean
@@ -48,7 +48,10 @@ class GNN(torch.nn.Module):
         elif self.graph_pooling == "set2set":
             self.pool = Set2Set(emb_dim, processing_steps = 2)
         elif self.graph_pooling == "laf":
-            self.pool = ScatterAggregationLayer(function=laf_fun, grad=lafgrad, device=device)
+            if laf_fun =='exp':
+                self.pool = ExponentialLAF()
+            else:
+                self.pool = ScatterAggregationLayer(function=laf_fun, grad=lafgrad, device=device)
         else:
             raise ValueError("Invalid graph pooling type.")
 
@@ -59,7 +62,7 @@ class GNN(torch.nn.Module):
 
     def forward(self, batched_data):
         h_node = self.gnn_node(batched_data)
-        if self.graph_pooling == 'laf':
+        if self.graph_pooling == 'laf' and isinstance(self.pool, ScatterAggregationLayer):
             x_min = torch.min(h_node, dim=0, keepdim=True)[0]
             s = torch.ones_like(h_node) * x_min
             s = F.relu(-s)

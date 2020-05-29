@@ -168,10 +168,10 @@ def main():
     model_params = []
     laf_params = []
     for n, p in model.named_parameters():
-        if n != 'pool.weights':
-            model_params.append(p)
-        else:
+        if n == 'pool.weights' or n == 'pool.alpha' or n == 'pool.beta' or n == 'pool.N' or n == 'pool.M':
             laf_params.append(p)
+        else:
+            model_params.append(p)
 
     optimizer = optim.Adam(model_params, lr=0.001)
     optimizerlaf = optim.Adam(laf_params, lr=0.0001)
