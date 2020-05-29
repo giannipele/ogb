@@ -174,11 +174,7 @@ def main():
             model_params.append(p)
 
     optimizer = optim.Adam(model_params, lr=0.001)
-<<<<<<< HEAD
-    lafoptimizer = optim.Adam(laf_params, lr=0.0001)
-=======
     optimizerlaf = optim.Adam(laf_params, lr=0.0001)
->>>>>>> 9f322dc92b3eb417566878696ededd5999b8cf56
 
     flog = open(args.filename + ".log", 'a')
     valid_curve = []
