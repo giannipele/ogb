@@ -194,7 +194,7 @@ def main():
         flog.write("=====Epoch {}\n".format(epoch))
 
         print('Training...')
-        if args.alternate == 'true':
+        if args.alternate == 'false':
             train_perf = train(model, device, train_loader, optimizer, optimizerlaf, dataset.task_type, evaluator)
         else:
             train_perf = train(model, device, train_loader, optimizer, None, dataset.task_type, evaluator)
