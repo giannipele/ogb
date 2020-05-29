@@ -94,7 +94,12 @@ class GINLafConv(MessagePassing):
         return aggr_out
 
     def aggregate(self, inputs, index, dim_size):
+        x_min = torch.min(inputs, dim=0, keepdim=True)[0]
+        s = torch.ones_like(inputs) * x_min
+        s = F.relu(-s)
         out = self.aggregator(inputs, index, dim_size=dim_size)
+        s_out = self.aggregator(s, index, dim_size=dim_size)
+        out = out - s_out
         return out
 
 
@@ -129,7 +134,12 @@ class GCNLafConv(MessagePassing):
         return aggr_out
 
     def aggregate(self, inputs, index, dim_size):
+        x_min = torch.min(inputs, dim=0, keepdim=True)[0]
+        s = torch.ones_like(inputs) * x_min
+        s = F.relu(-s)
         out = self.aggregator(inputs, index, dim_size=dim_size)
+        s_out = self.aggregator(s, index, dim_size=dim_size)
+        out = out - s_out
         return out
 
 
@@ -166,6 +176,7 @@ class GATConv(MessagePassing):
 
     def forward(self, x, edge_index, edge_attribute=None ):
         """"""
+        size = None
         if size is None and torch.is_tensor(x):
             edge_index, _ = remove_self_loops(edge_index)
             edge_index, _ = add_self_loops(edge_index, num_nodes=x.size(0))
@@ -274,11 +285,11 @@ class GNN_node(torch.nn.Module):
             h = self.convs[layer](h_list[layer], edge_index, edge_attr)
             h = self.batch_norms[layer](h)
 
-            #if layer == self.num_layer - 1:
+            if layer == self.num_layer - 1:
                 #remove relu for the last layer
-            #    h = F.dropout(h, self.drop_ratio, training = self.training)
-            #else:
-            h = F.dropout(F.relu(h), self.drop_ratio, training = self.training)
+                h = F.dropout(h, self.drop_ratio, training = self.training)
+            else:
+                h = F.dropout(F.relu(h), self.drop_ratio, training = self.training)
 
             if self.residual:
                 h += h_list[layer]
