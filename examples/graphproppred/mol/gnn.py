@@ -59,8 +59,15 @@ class GNN(torch.nn.Module):
 
     def forward(self, batched_data):
         h_node = self.gnn_node(batched_data)
-
-        h_graph = self.pool(h_node, batched_data.batch)
+        if self.graph_pooling == 'laf':
+            x_min = torch.min(h_node, dim=0, keepdim=True)[0]
+            s = torch.ones_like(h_node) * x_min
+            s = F.relu(-s)
+            out = self.pool(h_node, batched_data.batch)
+            s_out = self.pool(s, batched_data.batch)
+            h_graph = out - s_out
+        else:
+            h_graph = self.pool(h_node, batched_data.batch)
         return self.graph_pred_linear(h_graph)
 
 
