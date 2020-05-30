@@ -66,8 +66,11 @@ class GNN(torch.nn.Module):
             x_min = torch.min(h_node, dim=0, keepdim=True)[0]
             s = torch.ones_like(h_node) * x_min
             s = F.relu(-s)
+            h_node = h_node + s
+            s = F.relu(-x_min)
             out = self.pool(h_node, batched_data.batch)
-            s_out = self.pool(s, batched_data.batch)
+            s_out = self.pool(s, torch.tensor([0]))
+            s_out = torch.ones_like(out) * s_out
             h_graph = out - s_out
         else:
             h_graph = self.pool(h_node, batched_data.batch)
