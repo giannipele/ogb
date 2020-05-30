@@ -3,7 +3,7 @@ from torch_geometric.nn import MessagePassing
 from torch_geometric.nn import global_add_pool, global_mean_pool, global_max_pool, GlobalAttention, Set2Set
 import torch.nn.functional as F
 from torch_geometric.nn.inits import uniform
-from laf import ScatterAggregationLayer, ExponentialLAF
+from laf import ScatterAggregationLayer, ScatterExponentialLAF
 from conv import GNN_node, GNN_node_Virtualnode
 
 from torch_scatter import scatter_mean
@@ -49,7 +49,7 @@ class GNN(torch.nn.Module):
             self.pool = Set2Set(emb_dim, processing_steps = 2)
         elif self.graph_pooling == "laf":
             if laf_fun =='exp':
-                self.pool = ExponentialLAF()
+                self.pool = ScatterExponentialLAF(device=device)
             else:
                 self.pool = ScatterAggregationLayer(function=laf_fun, grad=lafgrad, device=device)
         else:
@@ -72,6 +72,8 @@ class GNN(torch.nn.Module):
             s_out = self.pool(s, torch.tensor([0]))
             s_out = torch.ones_like(out) * s_out
             h_graph = out - s_out
+        elif self.graph_pooling == 'laf' and isinstance(self.pool, ScatterExponentialLAF):
+            h_graph = self.pool(h_node, batched_data.batch)
         else:
             h_graph = self.pool(h_node, batched_data.batch)
         return self.graph_pred_linear(h_graph)
