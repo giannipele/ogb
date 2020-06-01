@@ -378,7 +378,7 @@ class GNN_node_Virtualnode(torch.nn.Module):
         ### virtual node embeddings for graphs
         virtualnode_embedding = self.virtualnode_embedding(torch.zeros(batch[-1].item() + 1).to(edge_index.dtype).to(edge_index.device))
 
-        h_list = [F.relu(self.atom_encoder(x))]
+        h_list = [self.atom_encoder(x)]
         for layer in range(self.num_layer):
             ### add message from virtual nodes to graph nodes
             h_list[layer] = h_list[layer] + virtualnode_embedding[batch]
