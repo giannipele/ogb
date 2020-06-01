@@ -174,7 +174,10 @@ def main():
             model_params.append(p)
 
     optimizer = optim.Adam(model_params, lr=0.001)
-    optimizerlaf = optim.Adam(laf_params, lr=0.0001)
+    if laf_params == []:
+        optimizerlaf = None
+    else:
+        optimizerlaf = optim.Adam(laf_params, lr=0.0001)
 
     flog = open(args.filename + ".log", 'a')
     valid_curve = []
@@ -253,7 +256,7 @@ def main():
         torch.save({'Val': valid_curve[best_val_epoch], 'Test': test_curve[best_val_epoch],
                     'Train': train_curve[best_val_epoch], 'BestTrain': best_train}, args.filename + "_fixed_training.res")
 
-    if args.alternate == 'true':
+    if args.alternate == 'true'and optimizerlaf:
         args.alternate = 'false'
         flog.write("===================LAF TRAINING=================\n")
         valid_curve = []
