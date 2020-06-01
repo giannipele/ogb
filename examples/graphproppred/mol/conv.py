@@ -368,7 +368,7 @@ class GNN_node_Virtualnode(torch.nn.Module):
         for layer in range(num_layer - 1):
             self.mlp_virtualnode_list.append(torch.nn.Sequential(torch.nn.Linear(emb_dim, 2*emb_dim), torch.nn.BatchNorm1d(2*emb_dim), torch.nn.ReLU(), \
                                                     torch.nn.Linear(2*emb_dim, emb_dim), torch.nn.BatchNorm1d(emb_dim), torch.nn.ReLU()))
-            self.lafs.append(ScatterAggregationLayer(grad=True, function=laf_fun, device=device))
+            #self.lafs.append(ScatterAggregationLayer(grad=True, function=laf_fun, device=device))
 
 
     def forward(self, batched_data):
@@ -401,8 +401,8 @@ class GNN_node_Virtualnode(torch.nn.Module):
             ### update the virtual nodes
             if layer < self.num_layer - 1:
                 ### add message from graph nodes to virtual nodes
-                #virtualnode_embedding_temp = global_add_pool(h_list[layer], batch) + virtualnode_embedding
-                virtualnode_embedding_temp = self.lafs[layer](h_list[layer], batch) + virtualnode_embedding
+                virtualnode_embedding_temp = global_add_pool(h_list[layer], batch) + virtualnode_embedding
+                #virtualnode_embedding_temp = self.lafs[layer](h_list[layer], batch) + virtualnode_embedding
                 ### transform virtual nodes using MLP
 
                 if self.residual:
