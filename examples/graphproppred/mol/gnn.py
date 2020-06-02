@@ -1,6 +1,7 @@
 import torch
 from torch_geometric.nn import MessagePassing
 from torch_geometric.nn import global_add_pool, global_mean_pool, global_max_pool, GlobalAttention, Set2Set
+import torch_scatter
 import torch.nn.functional as F
 from torch_geometric.nn.inits import uniform
 from laf import ScatterAggregationLayer, ScatterExponentialLAF
@@ -63,14 +64,13 @@ class GNN(torch.nn.Module):
     def forward(self, batched_data):
         h_node = self.gnn_node(batched_data)
         if self.graph_pooling == 'laf' and isinstance(self.pool, ScatterAggregationLayer):
-            x_min = torch.min(h_node, dim=0, keepdim=True)[0]
-            s = torch.ones_like(h_node) * x_min
-            s = F.relu(-s)
+            x_min = torch_scatter.scatter_min(h_node, batched_data.batch, dim=0)[0]
+            gather_idxs = batched_data.batch.expand(h_node.shape[1], -1).t()
+            gather_mins = torch.gather(x_min, 0, gather_idxs)
+            s = F.relu(-gather_mins)
             h_node = h_node + s
-            s = F.relu(-x_min)
             out = self.pool(h_node, batched_data.batch)
-            s_out = self.pool(s, torch.tensor([0], device=self.pool.device))
-            s_out = torch.ones_like(out) * s_out
+            s_out = self.pool(s, batched_data.batch)
             h_graph = out - s_out
         elif self.graph_pooling == 'laf' and isinstance(self.pool, ScatterExponentialLAF):
             h_graph = self.pool(h_node, batched_data.batch)
