@@ -209,10 +209,12 @@ def main():
 
         print({'Train': train_perf, 'Validation': valid_perf, 'Test': test_perf})
         print("Time {:.4f}s".format(time.time() - start))
-        #print("{}\n".format(torch.norm(model.pool.weights)))
+        if laf_params != []:
+            print("{}\n".format(torch.norm(model.pool.weights)))
         flog.write("{}\n".format({'Train': train_perf, 'Validation': valid_perf, 'Test': test_perf}))
         flog.write("Time: {}\n".format(time.time()-start))
-        #flog.write("Laf weights norm: {}\n".format(torch.norm(model.pool.weights, dim=0)))
+        if laf_params != []:
+            flog.write("Laf weights norm: {}\n".format(torch.norm(model.pool.weights, dim=0)))
         flog.flush()
 
         train_curve.append(train_perf[dataset.eval_metric])
