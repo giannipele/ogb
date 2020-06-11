@@ -15,14 +15,13 @@ cls_criterion = torch.nn.BCEWithLogitsLoss()
 reg_criterion = torch.nn.MSELoss()
 
 
-def train(model, device, loader, optimizer, optimizerlaf, task_type, evaluator):
+def train(model, device, loader, optimizer, optimizerlaf, task_type, evaluator, alternate='false'):
     model.train()
 
     y_true = []
     y_pred = []
     for step, batch in enumerate(tqdm(loader, desc="Iteration")):
         batch = batch.to(device)
-
         if batch.x.shape[0] == 1 or batch.batch[-1] == 0:
             pass
         else:
@@ -37,9 +36,15 @@ def train(model, device, loader, optimizer, optimizerlaf, task_type, evaluator):
             else:
                 loss = reg_criterion(pred.to(torch.float32)[is_labeled], batch.y.to(torch.float32)[is_labeled])
             loss.backward()
-            optimizer.step()
-            if optimizerlaf:
-                optimizerlaf.step()
+            if alternate=='false':
+                optimizer.step()
+                if optimizerlaf:
+                    optimizerlaf.step()
+            else:
+                if step%2==0:
+                    optimizer.step()
+                elif step%2==1:
+                    optimizerlaf.step()
 
             y_true.append(batch.y.view(pred.shape).detach().cpu())
             y_pred.append(pred.detach().cpu())
@@ -189,18 +194,20 @@ def main():
     else:
         best_val = 1e12
 
-
     flog.write("{}\n".format(args))
+    bflag = True
     for epoch in range(1, args.epochs + 1):
         start = time.time()
         print("=====Epoch {}".format(epoch))
         flog.write("=====Epoch {}\n".format(epoch))
 
         print('Training...')
-        if args.alternate == 'false':
-            train_perf = train(model, device, train_loader, optimizer, optimizerlaf, dataset.task_type, evaluator)
-        else:
-            train_perf = train(model, device, train_loader, optimizer, None, dataset.task_type, evaluator)
+        #if args.alternate == 'false':
+        #    train_perf = train(model, device, train_loader, optimizer, optimizerlaf, dataset.task_type, evaluator)
+        #else:
+        #    train_perf = train(model, device, train_loader, optimizer, None, dataset.task_type, evaluator)
+        #if args.alternate == 'false':
+        train_perf = train(model, device, train_loader, optimizer, optimizerlaf, dataset.task_type, evaluator, alternate=args.alternate)
 
         print('Evaluating...')
         # train_perf = eval(model, device, train_loader, evaluator)
@@ -258,72 +265,72 @@ def main():
         torch.save({'Val': valid_curve[best_val_epoch], 'Test': test_curve[best_val_epoch],
                     'Train': train_curve[best_val_epoch], 'BestTrain': best_train}, args.filename + "_fixed_training.res")
 
-    if args.alternate == 'true'and optimizerlaf:
-        args.alternate = 'false'
-        flog.write("===================LAF TRAINING=================\n")
-        valid_curve = []
-        test_curve = []
-        train_curve = []
+  #  if args.alternate == 'true'and optimizerlaf:
+  #      args.alternate = 'false'
+  #      flog.write("===================LAF TRAINING=================\n")
+  #      valid_curve = []
+  #      test_curve = []
+  #      train_curve = []
 
-        if 'classification' in dataset.task_type:
-            best_val = 0
-        else:
-            best_val = 1e12
-        for epoch in range(1, args.epochs + 1):
-            start = time.time()
-            print("=====Epoch {}".format(epoch))
-            flog.write("=====Epoch {}\n".format(epoch))
+  #      if 'classification' in dataset.task_type:
+  #          best_val = 0
+  #      else:
+  #          best_val = 1e12
+  #      for epoch in range(1, args.epochs + 1):
+  #          start = time.time()
+  #          print("=====Epoch {}".format(epoch))
+  #          flog.write("=====Epoch {}\n".format(epoch))
 
-            print('Training...')
-            train_perf = train(model, device, train_loader, optimizerlaf, None, dataset.task_type, evaluator)
+  #          print('Training...')
+  #          train_perf = train(model, device, train_loader, optimizerlaf, None, dataset.task_type, evaluator)
 
-            print('Evaluating...')
-            # train_perf = eval(model, device, train_loader, evaluator)
-            valid_perf = eval(model, device, valid_loader, evaluator)
-            test_perf = eval(model, device, test_loader, evaluator)
+  #          print('Evaluating...')
+  #          # train_perf = eval(model, device, train_loader, evaluator)
+  #          valid_perf = eval(model, device, valid_loader, evaluator)
+  #          test_perf = eval(model, device, test_loader, evaluator)
 
-            print({'Train': train_perf, 'Validation': valid_perf, 'Test': test_perf})
-            print("Time {:.4f}s".format(time.time() - start))
-            #print("{}\n".format(torch.norm(model.pool.weights)))
-            flog.write("{}\n".format({'Train': train_perf, 'Validation': valid_perf, 'Test': test_perf}))
-            flog.write("Time: {}\n".format(time.time()-start))
-            #flog.write("Laf weights norm: {}\n".format(torch.norm(model.pool.weights, dim=0)))
-            flog.flush()
+  #          print({'Train': train_perf, 'Validation': valid_perf, 'Test': test_perf})
+  #          print("Time {:.4f}s".format(time.time() - start))
+  #          #print("{}\n".format(torch.norm(model.pool.weights)))
+  #          flog.write("{}\n".format({'Train': train_perf, 'Validation': valid_perf, 'Test': test_perf}))
+  #          flog.write("Time: {}\n".format(time.time()-start))
+  #          #flog.write("Laf weights norm: {}\n".format(torch.norm(model.pool.weights, dim=0)))
+  #          flog.flush()
 
-            train_curve.append(train_perf[dataset.eval_metric])
-            valid_curve.append(valid_perf[dataset.eval_metric])
-            test_curve.append(test_perf[dataset.eval_metric])
+  #          train_curve.append(train_perf[dataset.eval_metric])
+  #          valid_curve.append(valid_perf[dataset.eval_metric])
+  #          test_curve.append(test_perf[dataset.eval_metric])
 
-            if 'classification' in dataset.task_type:
-                if valid_perf[dataset.eval_metric] >= best_val:
-                    best_val = valid_perf[dataset.eval_metric]
-                    if not args.filename == '':
-                        torch.save(model.state_dict(), '{}_laf_training.mdl'.format(args.filename))
-            else:
-                if valid_perf[dataset.eval_metric] <= best_val:
-                    best_val = epoch
-                    if not args.filename == '':
-                        torch.save(model.state_dict(), '{}_laf_training.mdl'.format(args.filename))
+  #          if 'classification' in dataset.task_type:
+  #              if valid_perf[dataset.eval_metric] >= best_val:
+  #                  best_val = valid_perf[dataset.eval_metric]
+  #                  if not args.filename == '':
+  #                      torch.save(model.state_dict(), '{}_laf_training.mdl'.format(args.filename))
+  #          else:
+  #              if valid_perf[dataset.eval_metric] <= best_val:
+  #                  best_val = epoch
+  #                  if not args.filename == '':
+  #                      torch.save(model.state_dict(), '{}_laf_training.mdl'.format(args.filename))
 
-        if 'classification' in dataset.task_type:
-            best_val_epoch = np.argmax(np.array(valid_curve))
-            best_train = max(train_curve)
-        else:
-            best_val_epoch = np.argmin(np.array(valid_curve))
-            best_train = min(train_curve)
+  #      if 'classification' in dataset.task_type:
+  #          best_val_epoch = np.argmax(np.array(valid_curve))
+  #          best_train = max(train_curve)
+  #      else:
+  #          best_val_epoch = np.argmin(np.array(valid_curve))
+  #          best_train = min(train_curve)
 
-        print('Finished training!')
-        print('Best validation score: {}'.format(valid_curve[best_val_epoch]))
-        print('Test score: {}'.format(test_curve[best_val_epoch]))
+  #      print('Finished training!')
+  #      print('Best validation score: {}'.format(valid_curve[best_val_epoch]))
+  #      print('Test score: {}'.format(test_curve[best_val_epoch]))
 
-        flog.write('Finished training!\n')
-        flog.write('Best validation score: {}\n'.format(valid_curve[best_val_epoch]))
-        flog.write('Test score: {}\n'.format(test_curve[best_val_epoch]))
-        flog.flush()
+  #      flog.write('Finished training!\n')
+  #      flog.write('Best validation score: {}\n'.format(valid_curve[best_val_epoch]))
+  #      flog.write('Test score: {}\n'.format(test_curve[best_val_epoch]))
+  #      flog.flush()
 
-        if not args.filename == '':
-            torch.save({'Val': valid_curve[best_val_epoch], 'Test': test_curve[best_val_epoch],
-                        'Train': train_curve[best_val_epoch], 'BestTrain': best_train}, args.filename + "_laf_training.res")
+  #      if not args.filename == '':
+  #          torch.save({'Val': valid_curve[best_val_epoch], 'Test': test_curve[best_val_epoch],
+  #                      'Train': train_curve[best_val_epoch], 'BestTrain': best_train}, args.filename + "_laf_training.res")
     flog.close()
 
 if __name__ == "__main__":
